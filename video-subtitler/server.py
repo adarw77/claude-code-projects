@@ -163,7 +163,7 @@ def process_video(
         update_job(job_id, "done", "Done!", output=str(output_path))
 
     except FileNotFoundError as e:
-        update_job(job_id, "error", "Failed.", error=f"Executable not found: {e.filename}\nFull error: {e}")
+        update_job(job_id, "error", "Failed.", error=f"Executable not found: {e.filename}\nFFMPEG path in use: {FFMPEG}\nYT_DLP path in use: {YT_DLP}\nFull error: {e}")
     except Exception as e:
         update_job(job_id, "error", "Failed.", error=str(e))
 
