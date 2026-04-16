@@ -146,7 +146,7 @@ def process_video(
 
         ffmpeg_result = subprocess.run(
             [
-                "ffmpeg", "-y",
+                r"C:\ffmpeg\ffmpeg-8.1-essentials_build\bin\ffmpeg.exe", "-y",
                 "-i", str(video_path),
                 "-vf", f"subtitles='{srt_str}'",
                 "-c:a", "copy",
