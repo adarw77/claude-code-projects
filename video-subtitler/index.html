@@ -395,7 +395,7 @@
       if (apiKeyInput.value.trim()) formData.append('openai_api_key', apiKeyInput.value.trim());
 
       submitBtn.disabled = true;
-      progressSection.style.display = '';
+      progressSection.style.display = 'block';
       errorSection.style.display = 'none';
       resultSection.style.display = 'none';
       progressText.textContent = 'Uploading...';
@@ -437,8 +437,8 @@
 
     function showResult(jobId) {
       progressSection.style.display = 'none';
-      resultSection.style.display = '';
-      resetBtn.style.display = '';
+      resultSection.style.display = 'block';
+      resetBtn.style.display = 'block';
       const url = `/download/${jobId}`;
       resultVideo.src = url;
       downloadBtn.href = url;
@@ -447,9 +447,9 @@
     function showError(msg) {
       submitBtn.disabled = false;
       progressSection.style.display = 'none';
-      errorSection.style.display = '';
+      errorSection.style.display = 'block';
       errorText.textContent = msg;
-      resetBtn.style.display = '';
+      resetBtn.style.display = 'block';
     }
 
     resetBtn.addEventListener('click', () => {
