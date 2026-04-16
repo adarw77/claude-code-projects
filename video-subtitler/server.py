@@ -14,6 +14,9 @@ app = FastAPI()
 WORK_DIR = Path(tempfile.gettempdir()) / "video_subtitler"
 WORK_DIR.mkdir(exist_ok=True)
 
+FFMPEG  = r"C:\ffmpeg\ffmpeg-8.1-essentials_build\bin\ffmpeg.exe"
+YT_DLP  = r"C:\Users\abbas\AppData\Local\Programs\Python\Python312\Scripts\yt-dlp.exe"
+
 # Whisper model loaded once on first use, then reused for all jobs
 _whisper_model = None
 _whisper_lock = threading.Lock()
@@ -93,13 +96,13 @@ def process_video(
         if is_url:
             video_path = job_dir / "input.mp4"
             result = subprocess.run(
-                ["yt-dlp", "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+                [YT_DLP, "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
                  "--merge-output-format", "mp4",
                  "-o", str(video_path), video_source],
                 capture_output=True, text=True
             )
             if result.returncode != 0:
-                raise RuntimeError(f"yt-dlp failed: {result.stderr}")
+                raise RuntimeError(f"yt-dlp failed.\nCommand: {YT_DLP}\nError: {result.stderr[-1000:]}")
         else:
             video_path = Path(video_source)
 
@@ -146,7 +149,7 @@ def process_video(
 
         ffmpeg_result = subprocess.run(
             [
-                r"C:\ffmpeg\ffmpeg-8.1-essentials_build\bin\ffmpeg.exe", "-y",
+                FFMPEG, "-y",
                 "-i", str(video_path),
                 "-vf", f"subtitles='{srt_str}'",
                 "-c:a", "copy",
@@ -155,10 +158,12 @@ def process_video(
             capture_output=True, text=True
         )
         if ffmpeg_result.returncode != 0:
-            raise RuntimeError(f"ffmpeg failed: {ffmpeg_result.stderr[-2000:]}")
+            raise RuntimeError(f"ffmpeg failed.\nCommand: {FFMPEG}\nError: {ffmpeg_result.stderr[-2000:]}")
 
         update_job(job_id, "done", "Done!", output=str(output_path))
 
+    except FileNotFoundError as e:
+        update_job(job_id, "error", "Failed.", error=f"Executable not found: {e.filename}\nFull error: {e}")
     except Exception as e:
         update_job(job_id, "error", "Failed.", error=str(e))
 
