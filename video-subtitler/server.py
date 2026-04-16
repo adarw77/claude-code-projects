@@ -94,6 +94,7 @@ def process_video(
         update_job(job_id, "running", "Acquiring video...")
 
         if is_url:
+            update_job(job_id, "running", f"Downloading video from URL via yt-dlp...")
             video_path = job_dir / "input.mp4"
             result = subprocess.run(
                 [YT_DLP, "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
@@ -104,6 +105,7 @@ def process_video(
             if result.returncode != 0:
                 raise RuntimeError(f"yt-dlp failed.\nCommand: {YT_DLP}\nError: {result.stderr[-1000:]}")
         else:
+            update_job(job_id, "running", f"Using uploaded file: {Path(video_source).name}")
             video_path = Path(video_source)
 
         # ── Step 2: Get subtitles ──────────────────────────────────────────
@@ -197,7 +199,8 @@ async def start_process(
     # Save uploaded video
     video_source = None
     is_url = False
-    if video_file:
+    has_real_file = video_file is not None and video_file.filename not in (None, "")
+    if has_real_file:
         safe_name = "input" + Path(video_file.filename).suffix
         video_source = str(job_dir / safe_name)
         with open(video_source, "wb") as f:
