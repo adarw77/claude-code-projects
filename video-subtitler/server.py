@@ -1,3 +1,4 @@
+import os
 import uuid
 import shutil
 import subprocess
@@ -14,8 +15,12 @@ app = FastAPI()
 WORK_DIR = Path(tempfile.gettempdir()) / "video_subtitler"
 WORK_DIR.mkdir(exist_ok=True)
 
-FFMPEG  = r"C:\ffmpeg\ffmpeg-8.1-essentials_build\bin\ffmpeg.exe"
-YT_DLP  = r"C:\Users\abbas\AppData\Local\Programs\Python\Python312\Scripts\yt-dlp.exe"
+FFMPEG     = r"C:\ffmpeg\ffmpeg-8.1-essentials_build\bin\ffmpeg.exe"
+FFMPEG_DIR = r"C:\ffmpeg\ffmpeg-8.1-essentials_build\bin"
+YT_DLP     = r"C:\Users\abbas\AppData\Local\Programs\Python\Python312\Scripts\yt-dlp.exe"
+
+# Add ffmpeg to PATH so Whisper's internal ffmpeg call can find it
+os.environ["PATH"] = FFMPEG_DIR + os.pathsep + os.environ.get("PATH", "")
 
 # Validate paths at startup so problems are caught immediately
 for _name, _path in [("ffmpeg", FFMPEG), ("yt-dlp", YT_DLP)]:
