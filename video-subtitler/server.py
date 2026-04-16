@@ -17,6 +17,11 @@ WORK_DIR.mkdir(exist_ok=True)
 FFMPEG  = r"C:\ffmpeg\ffmpeg-8.1-essentials_build\bin\ffmpeg.exe"
 YT_DLP  = r"C:\Users\abbas\AppData\Local\Programs\Python\Python312\Scripts\yt-dlp.exe"
 
+# Validate paths at startup so problems are caught immediately
+for _name, _path in [("ffmpeg", FFMPEG), ("yt-dlp", YT_DLP)]:
+    if not Path(_path).exists():
+        raise RuntimeError(f"Required executable not found: {_name}\nExpected at: {_path}")
+
 # Whisper model loaded once on first use, then reused for all jobs
 _whisper_model = None
 _whisper_lock = threading.Lock()
@@ -165,7 +170,7 @@ def process_video(
         update_job(job_id, "done", "Done!", output=str(output_path))
 
     except FileNotFoundError as e:
-        update_job(job_id, "error", "Failed.", error=f"Executable not found: {e.filename}\nFFMPEG path in use: {FFMPEG}\nYT_DLP path in use: {YT_DLP}\nFull error: {e}")
+        update_job(job_id, "error", "Failed.", error=f"Executable not found (WinError 2).\nffmpeg: {FFMPEG} — exists: {Path(FFMPEG).exists()}\nyt-dlp: {YT_DLP} — exists: {Path(YT_DLP).exists()}\nDetail: {e}")
     except Exception as e:
         update_job(job_id, "error", "Failed.", error=str(e))
 
