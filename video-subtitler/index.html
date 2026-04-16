@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Subtitler</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f1a;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    h1 {
+      font-size: 2rem;
+      color: #e94560;
+      margin-bottom: 0.3rem;
+      letter-spacing: 1px;
+    }
+
+    .subtitle { color: #888; margin-bottom: 2rem; font-size: 0.95rem; }
+
+    .card {
+      background: #16213e;
+      border-radius: 16px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 620px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    .section-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #a8dadc;
+      margin-bottom: 0.6rem;
+      margin-top: 1.4rem;
+    }
+    .section-label:first-child { margin-top: 0; }
+
+    /* Drop zone */
+    #drop-zone {
+      border: 2px dashed #334;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+    #drop-zone:hover, #drop-zone.drag-over {
+      border-color: #e94560;
+      background: #1a0e1a;
+    }
+    #drop-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    #drop-zone .drop-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    #drop-zone .drop-text { color: #aaa; font-size: 0.9rem; }
+    #drop-zone .drop-text span { color: #e94560; text-decoration: underline; }
+    #file-name { margin-top: 0.5rem; font-size: 0.85rem; color: #a8dadc; min-height: 1.2em; }
+
+    .divider {
+      display: flex; align-items: center; gap: 0.8rem;
+      color: #555; font-size: 0.8rem; margin: 0.8rem 0;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: #334;
+    }
+
+    input[type=text], input[type=password] {
+      width: 100%;
+      background: #0f1730;
+      border: 1px solid #334;
+      border-radius: 8px;
+      color: #e0e0e0;
+      padding: 0.65rem 0.9rem;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type=text]:focus, input[type=password]:focus { border-color: #e94560; }
+
+    .radio-group {
+      display: flex; gap: 0.8rem;
+    }
+    .radio-btn {
+      flex: 1;
+      display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+      padding: 0.6rem;
+      border: 1px solid #334;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: border-color 0.2s, background 0.2s;
+      user-select: none;
+    }
+    .radio-btn input { display: none; }
+    .radio-btn.active { border-color: #e94560; background: #1a0a12; color: #e94560; }
+
+    select {
+      width: 100%;
+      background: #0f1730;
+      border: 1px solid #334;
+      border-radius: 8px;
+      color: #e0e0e0;
+      padding: 0.65rem 0.9rem;
+      font-size: 0.95rem;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    select:focus { border-color: #e94560; }
+
+    #srt-section {
+      display: none;
+    }
+
+    .srt-upload-btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: #0f1730;
+      border: 1px solid #334;
+      border-radius: 8px;
+      color: #e0e0e0;
+      padding: 0.6rem 1rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .srt-upload-btn:hover { border-color: #e94560; }
+    .srt-upload-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    #srt-name { margin-top: 0.4rem; font-size: 0.82rem; color: #a8dadc; min-height: 1.1em; }
+
+    #api-section { display: none; }
+
+    .hint { font-size: 0.78rem; color: #666; margin-top: 0.3rem; }
+
+    button#submit-btn {
+      width: 100%;
+      margin-top: 1.8rem;
+      padding: 0.85rem;
+      background: #e94560;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: background 0.2s, opacity 0.2s;
+    }
+    button#submit-btn:hover { background: #c73652; }
+    button#submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Progress */
+    #progress-section { display: none; margin-top: 1.5rem; }
+    .progress-bar-bg {
+      background: #0f1730; border-radius: 99px; height: 8px; overflow: hidden; margin-bottom: 0.5rem;
+    }
+    .progress-bar-fill {
+      background: linear-gradient(90deg, #e94560, #a8dadc);
+      height: 100%; border-radius: 99px;
+      animation: indeterminate 1.4s linear infinite;
+      width: 40%;
+    }
+    @keyframes indeterminate {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(350%); }
+    }
+    #progress-text { font-size: 0.88rem; color: #aaa; }
+
+    /* Result */
+    #result-section { display: none; margin-top: 1.5rem; }
+    #result-section video {
+      width: 100%; border-radius: 10px; margin-bottom: 1rem;
+      background: #000;
+    }
+    #download-btn {
+      display: block; width: 100%;
+      padding: 0.75rem;
+      background: #1a3a1a;
+      border: 1px solid #2a6a2a;
+      border-radius: 10px;
+      color: #5dfc5d;
+      font-size: 0.95rem;
+      text-align: center;
+      text-decoration: none;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    #download-btn:hover { background: #1e4a1e; }
+
+    #error-section { display: none; margin-top: 1rem; }
+    .error-box {
+      background: #2a0a0a; border: 1px solid #e94560;
+      border-radius: 8px; padding: 0.8rem 1rem;
+      color: #f88; font-size: 0.88rem;
+    }
+
+    #reset-btn {
+      display: none; margin-top: 1rem; width: 100%;
+      padding: 0.6rem; background: transparent; border: 1px solid #334;
+      border-radius: 8px; color: #aaa; cursor: pointer; font-size: 0.9rem;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    #reset-btn:hover { border-color: #e94560; color: #e94560; }
+  </style>
+</head>
+<body>
+  <h1>Video Subtitler</h1>
+  <p class="subtitle">Add subtitles to any video — auto-transcribed & translated</p>
+
+  <div class="card">
+
+    <!-- Video source -->
+    <div class="section-label">Video Source</div>
+    <div id="drop-zone">
+      <input type="file" id="video-file" accept="video/*">
+      <div class="drop-icon">🎬</div>
+      <div class="drop-text">Drag & drop a video, or <span>browse</span></div>
+      <div id="file-name"></div>
+    </div>
+
+    <div class="divider">or</div>
+
+    <input type="text" id="video-url" placeholder="Paste a YouTube URL or direct video link">
+
+    <!-- Subtitle mode -->
+    <div class="section-label">Subtitle Mode</div>
+    <div class="radio-group">
+      <label class="radio-btn active" id="btn-auto">
+        <input type="radio" name="subtitle_mode" value="auto" checked>
+        Auto-transcribe (AI)
+      </label>
+      <label class="radio-btn" id="btn-srt">
+        <input type="radio" name="subtitle_mode" value="srt">
+        Upload SRT file
+      </label>
+    </div>
+
+    <!-- SRT upload (shown only if "Upload SRT" selected) -->
+    <div id="srt-section">
+      <div class="section-label">SRT File</div>
+      <label class="srt-upload-btn">
+        <input type="file" id="srt-file" accept=".srt">
+        Upload .srt file
+      </label>
+      <div id="srt-name"></div>
+    </div>
+
+    <!-- Language (shown only for auto mode) -->
+    <div id="lang-section">
+      <div class="section-label">Subtitle Language</div>
+      <select id="subtitle-lang">
+        <option value="original">Original (keep source language)</option>
+        <option value="english">English</option>
+        <option value="arabic">Arabic</option>
+        <option value="spanish">Spanish</option>
+        <option value="french">French</option>
+        <option value="german">German</option>
+      </select>
+      <p class="hint">English translation uses Whisper directly. Other languages require an OpenAI API key.</p>
+    </div>
+
+    <!-- API key (shown when non-English non-original selected) -->
+    <div id="api-section">
+      <div class="section-label">OpenAI API Key</div>
+      <input type="password" id="api-key" placeholder="sk-...">
+      <p class="hint">Required for translating to Arabic, Spanish, French, or German.</p>
+    </div>
+
+    <button id="submit-btn">Process Video</button>
+
+    <div id="progress-section">
+      <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+      <div id="progress-text">Starting...</div>
+    </div>
+
+    <div id="result-section">
+      <video id="result-video" controls></video>
+      <a id="download-btn" href="#" download="subtitled_video.mp4">Download Video</a>
+    </div>
+
+    <div id="error-section">
+      <div class="error-box" id="error-text"></div>
+    </div>
+
+    <button id="reset-btn">Process Another Video</button>
+  </div>
+
+  <script>
+    const dropZone = document.getElementById('drop-zone');
+    const videoFileInput = document.getElementById('video-file');
+    const videoUrlInput = document.getElementById('video-url');
+    const fileNameEl = document.getElementById('file-name');
+    const btnAuto = document.getElementById('btn-auto');
+    const btnSrt = document.getElementById('btn-srt');
+    const srtSection = document.getElementById('srt-section');
+    const langSection = document.getElementById('lang-section');
+    const apiSection = document.getElementById('api-section');
+    const srtFileInput = document.getElementById('srt-file');
+    const srtNameEl = document.getElementById('srt-name');
+    const subtitleLang = document.getElementById('subtitle-lang');
+    const apiKeyInput = document.getElementById('api-key');
+    const submitBtn = document.getElementById('submit-btn');
+    const progressSection = document.getElementById('progress-section');
+    const progressText = document.getElementById('progress-text');
+    const resultSection = document.getElementById('result-section');
+    const resultVideo = document.getElementById('result-video');
+    const downloadBtn = document.getElementById('download-btn');
+    const errorSection = document.getElementById('error-section');
+    const errorText = document.getElementById('error-text');
+    const resetBtn = document.getElementById('reset-btn');
+
+    // Drag & drop
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      if (e.dataTransfer.files.length) {
+        videoFileInput.files = e.dataTransfer.files;
+        fileNameEl.textContent = e.dataTransfer.files[0].name;
+        videoUrlInput.value = '';
+      }
+    });
+    videoFileInput.addEventListener('change', () => {
+      fileNameEl.textContent = videoFileInput.files[0]?.name || '';
+      if (videoFileInput.files[0]) videoUrlInput.value = '';
+    });
+    videoUrlInput.addEventListener('input', () => {
+      if (videoUrlInput.value.trim()) {
+        videoFileInput.value = '';
+        fileNameEl.textContent = '';
+      }
+    });
+
+    // Radio buttons
+    btnAuto.addEventListener('click', () => {
+      btnAuto.classList.add('active');
+      btnSrt.classList.remove('active');
+      srtSection.style.display = 'none';
+      langSection.style.display = '';
+    });
+    btnSrt.addEventListener('click', () => {
+      btnSrt.classList.add('active');
+      btnAuto.classList.remove('active');
+      srtSection.style.display = '';
+      langSection.style.display = 'none';
+      apiSection.style.display = 'none';
+    });
+
+    // SRT file name
+    srtFileInput.addEventListener('change', () => {
+      srtNameEl.textContent = srtFileInput.files[0]?.name || '';
+    });
+
+    // Show API key field when needed
+    subtitleLang.addEventListener('change', () => {
+      const needsKey = !['original', 'english'].includes(subtitleLang.value);
+      apiSection.style.display = needsKey ? '' : 'none';
+    });
+
+    // Submit
+    submitBtn.addEventListener('click', async () => {
+      const hasFile = videoFileInput.files.length > 0;
+      const hasUrl = videoUrlInput.value.trim() !== '';
+      if (!hasFile && !hasUrl) {
+        alert('Please upload a video file or paste a URL.');
+        return;
+      }
+
+      const mode = document.querySelector('input[name=subtitle_mode]:checked').value;
+      if (mode === 'srt' && !srtFileInput.files.length) {
+        alert('Please upload an SRT file.');
+        return;
+      }
+
+      const formData = new FormData();
+      if (hasFile) formData.append('video_file', videoFileInput.files[0]);
+      if (hasUrl)  formData.append('video_url', videoUrlInput.value.trim());
+      formData.append('subtitle_mode', mode);
+      formData.append('subtitle_lang', subtitleLang.value);
+      if (srtFileInput.files.length) formData.append('srt_file', srtFileInput.files[0]);
+      if (apiKeyInput.value.trim()) formData.append('openai_api_key', apiKeyInput.value.trim());
+
+      submitBtn.disabled = true;
+      progressSection.style.display = '';
+      errorSection.style.display = 'none';
+      resultSection.style.display = 'none';
+      progressText.textContent = 'Uploading...';
+
+      let jobId;
+      try {
+        const res = await fetch('/process', { method: 'POST', body: formData });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Server error');
+        }
+        const data = await res.json();
+        jobId = data.job_id;
+      } catch (e) {
+        showError(e.message);
+        return;
+      }
+
+      // Poll for status
+      const poll = setInterval(async () => {
+        try {
+          const res = await fetch(`/status/${jobId}`);
+          const data = await res.json();
+          progressText.textContent = data.progress || '...';
+
+          if (data.status === 'done') {
+            clearInterval(poll);
+            showResult(jobId);
+          } else if (data.status === 'error') {
+            clearInterval(poll);
+            showError(data.error || 'Unknown error');
+          }
+        } catch (e) {
+          clearInterval(poll);
+          showError('Lost connection to server.');
+        }
+      }, 1500);
+    });
+
+    function showResult(jobId) {
+      progressSection.style.display = 'none';
+      resultSection.style.display = '';
+      resetBtn.style.display = '';
+      const url = `/download/${jobId}`;
+      resultVideo.src = url;
+      downloadBtn.href = url;
+    }
+
+    function showError(msg) {
+      submitBtn.disabled = false;
+      progressSection.style.display = 'none';
+      errorSection.style.display = '';
+      errorText.textContent = msg;
+      resetBtn.style.display = '';
+    }
+
+    resetBtn.addEventListener('click', () => {
+      videoFileInput.value = '';
+      fileNameEl.textContent = '';
+      videoUrlInput.value = '';
+      srtFileInput.value = '';
+      srtNameEl.textContent = '';
+      apiKeyInput.value = '';
+      subtitleLang.value = 'original';
+      apiSection.style.display = 'none';
+      resultSection.style.display = 'none';
+      errorSection.style.display = 'none';
+      progressSection.style.display = 'none';
+      resetBtn.style.display = 'none';
+      submitBtn.disabled = false;
+    });
+  </script>
+</body>
+</html>
