@@ -1,4 +1,3 @@
-import os
 import uuid
 import shutil
 import subprocess
@@ -9,12 +8,24 @@ from typing import Optional
 
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 
 WORK_DIR = Path(tempfile.gettempdir()) / "video_subtitler"
 WORK_DIR.mkdir(exist_ok=True)
+
+# Whisper model loaded once on first use, then reused for all jobs
+_whisper_model = None
+_whisper_lock = threading.Lock()
+
+def get_whisper_model():
+    global _whisper_model
+    if _whisper_model is None:
+        with _whisper_lock:
+            if _whisper_model is None:
+                import whisper
+                _whisper_model = whisper.load_model("base")
+    return _whisper_model
 
 # job_id -> {"status": str, "progress": str, "output": str|None, "error": str|None}
 jobs: dict[str, dict] = {}
@@ -100,8 +111,7 @@ def process_video(
 
         else:  # auto transcribe
             update_job(job_id, "running", "Transcribing audio with Whisper...")
-            import whisper
-            model = whisper.load_model("base")
+            model = get_whisper_model()
 
             if subtitle_lang == "english":
                 # Whisper can directly translate to English
@@ -183,7 +193,8 @@ async def start_process(
     video_source = None
     is_url = False
     if video_file:
-        video_source = str(job_dir / video_file.filename)
+        safe_name = "input" + Path(video_file.filename).suffix
+        video_source = str(job_dir / safe_name)
         with open(video_source, "wb") as f:
             shutil.copyfileobj(video_file.file, f)
     else:
