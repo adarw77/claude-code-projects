@@ -95,11 +95,12 @@
     .radio-btn {
       flex: 1;
       display: flex; align-items: center; justify-content: center; gap: 0.4rem;
-      padding: 0.6rem;
+      padding: 0.6rem 0.4rem;
       border: 1px solid #334;
       border-radius: 8px;
       cursor: pointer;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
+      text-align: center;
       transition: border-color 0.2s, background 0.2s;
       user-select: none;
     }
@@ -272,6 +273,27 @@
       <p class="hint">English translation uses Whisper directly. Other languages require an OpenAI API key.</p>
     </div>
 
+    <!-- Output format -->
+    <div class="section-label">Output Format</div>
+    <div class="radio-group" id="format-group">
+      <label class="radio-btn active" id="btn-fmt-original">
+        <input type="radio" name="output_format" value="original" checked>
+        Original
+      </label>
+      <label class="radio-btn" id="btn-fmt-youtube">
+        <input type="radio" name="output_format" value="youtube">
+        YouTube 16:9
+      </label>
+      <label class="radio-btn" id="btn-fmt-tiktok">
+        <input type="radio" name="output_format" value="tiktok">
+        TikTok 9:16
+      </label>
+      <label class="radio-btn" id="btn-fmt-instagram">
+        <input type="radio" name="output_format" value="instagram">
+        Instagram 1:1
+      </label>
+    </div>
+
     <!-- API key (shown when non-English non-original selected) -->
     <div id="api-section">
       <div class="section-label">OpenAI API Key</div>
@@ -308,6 +330,7 @@
     const srtSection = document.getElementById('srt-section');
     const langSection = document.getElementById('lang-section');
     const apiSection = document.getElementById('api-section');
+    const fmtBtns = document.querySelectorAll('#format-group .radio-btn');
     const srtFileInput = document.getElementById('srt-file');
     const srtNameEl = document.getElementById('srt-name');
     const subtitleLang = document.getElementById('subtitle-lang');
@@ -360,6 +383,14 @@
       apiSection.style.display = 'none';
     });
 
+    // Format buttons
+    fmtBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        fmtBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
     // SRT file name
     srtFileInput.addEventListener('change', () => {
       srtNameEl.textContent = srtFileInput.files[0]?.name || '';
@@ -386,11 +417,14 @@
         return;
       }
 
+      const outputFormat = document.querySelector('input[name=output_format]:checked').value;
+
       const formData = new FormData();
       if (hasFile) formData.append('video_file', videoFileInput.files[0]);
       if (hasUrl)  formData.append('video_url', videoUrlInput.value.trim());
       formData.append('subtitle_mode', mode);
       formData.append('subtitle_lang', subtitleLang.value);
+      formData.append('output_format', outputFormat);
       if (srtFileInput.files.length) formData.append('srt_file', srtFileInput.files[0]);
       if (apiKeyInput.value.trim()) formData.append('openai_api_key', apiKeyInput.value.trim());
 

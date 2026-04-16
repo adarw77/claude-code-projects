@@ -87,12 +87,31 @@ def translate_srt_to_language(srt_text: str, target_language: str, api_key: str)
     return response.choices[0].message.content.strip()
 
 
+def build_vf_filter(srt_str: str, output_format: str) -> str:
+    """Build the ffmpeg -vf filter string, optionally prepending a crop filter."""
+    # Crop expressions use \, to escape commas inside ffmpeg expressions so they
+    # aren't treated as filter-chain separators. trunc(x/2)*2 ensures even
+    # dimensions required by H.264.
+    crops = {
+        "youtube":   (r"trunc(min(iw\,ih*16/9)/2)*2", r"trunc(min(ih\,iw*9/16)/2)*2"),
+        "tiktok":    (r"trunc(min(iw\,ih*9/16)/2)*2", r"trunc(min(ih\,iw*16/9)/2)*2"),
+        "instagram": (r"trunc(min(iw\,ih)/2)*2",      r"trunc(min(iw\,ih)/2)*2"),
+    }
+    parts = []
+    if output_format in crops:
+        w, h = crops[output_format]
+        parts.append(f"crop={w}:{h}")
+    parts.append(f"subtitles='{srt_str}'")
+    return ",".join(parts)
+
+
 def process_video(
     job_id: str,
     video_source: str,         # file path or URL
     is_url: bool,
     subtitle_mode: str,        # "auto" or "srt"
     subtitle_lang: str,        # "original", "english", "arabic", "spanish", "french", "german"
+    output_format: str,        # "original", "youtube", "tiktok", "instagram"
     srt_path: Optional[str],   # path to uploaded SRT (if subtitle_mode == "srt")
     openai_api_key: Optional[str],
 ):
@@ -158,12 +177,13 @@ def process_video(
 
         # ffmpeg subtitles filter requires forward slashes and escaped colons on Windows
         srt_str = str(final_srt).replace("\\", "/").replace(":", "\\:")
+        vf = build_vf_filter(srt_str, output_format)
 
         ffmpeg_result = subprocess.run(
             [
                 FFMPEG, "-y",
                 "-i", str(video_path),
-                "-vf", f"subtitles='{srt_str}'",
+                "-vf", vf,
                 "-c:a", "copy",
                 str(output_path),
             ],
@@ -194,6 +214,7 @@ async def start_process(
     video_url: Optional[str] = Form(None),
     subtitle_mode: str = Form("auto"),
     subtitle_lang: str = Form("original"),
+    output_format: str = Form("original"),
     srt_file: Optional[UploadFile] = File(None),
     openai_api_key: Optional[str] = Form(None),
 ):
@@ -230,7 +251,7 @@ async def start_process(
 
     thread = threading.Thread(
         target=process_video,
-        args=(job_id, video_source, is_url, subtitle_mode, subtitle_lang, srt_path, openai_api_key),
+        args=(job_id, video_source, is_url, subtitle_mode, subtitle_lang, output_format, srt_path, openai_api_key),
         daemon=True,
     )
     thread.start()
